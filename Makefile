@@ -12,3 +12,5 @@ check: verify
 
 ci: verify
 	@if [ -n "$(BASE)" ]; then node scripts/check-corrections.mjs --base "$(BASE)"; fi
+
+# risk-paths proof (T801 t10): throwaway, never merge.
