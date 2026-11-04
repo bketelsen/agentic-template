@@ -192,6 +192,24 @@ test("bad percent escape exits 1 with docs-index", (t) => {
   assertFailure(run(root), "docs-index");
 });
 
+test("inline link without closing parenthesis exits 1", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "docs", "design"), { recursive: true });
+  writeFileSync(join(root, "docs", "design", "x.md"), "# X\n", "utf8");
+  writeFileSync(join(root, "docs", "README.md"), "# Docs\n\n- [0001](adr/0001-x.md)\n[Doc](design/x.md\n", "utf8");
+  assertFailure(run(root), "docs-index");
+});
+
+test("inline link with title exits 0", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "docs", "design"), { recursive: true });
+  writeFileSync(join(root, "docs", "design", "x.md"), "# X\n", "utf8");
+  writeFileSync(join(root, "docs", "README.md"), "# Docs\n\n- [0001](adr/0001-x.md)\n[Doc](design/x.md \"Title\")\n", "utf8");
+  assertClean(run(root));
+});
+
 test("unknown risk-path key exits 1", (t) => {
   const root = fixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));

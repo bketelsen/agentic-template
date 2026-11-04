@@ -170,7 +170,7 @@ function checkDocsIndex() {
     counts.links++;
   }
 
-  const inlineLinkPattern = /\]\(\s*(?:<([^>\n]+)>|([^\)\s]+))/g;
+  const inlineLinkPattern = /\]\(\s*(?:<([^>\n]+)>|([^()\s]+))(?:\s+(?:"[^"\n]*"|'[^'\n]*'|\([^()\n]*\)))?\s*\)/g;
   for (const match of indexText.matchAll(inlineLinkPattern)) {
     addLinkTarget(match[1] ?? match[2]);
   }
