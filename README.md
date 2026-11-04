@@ -117,3 +117,5 @@ web renderer shows symlinks as their target path, which is cosmetic only.
 
 3. Add your repository's high-risk paths to `.github/risk-paths.json`. Use globs
    and a category from the [core risk-path specification](https://github.com/frostyard/core/blob/main/docs/specs/risk-paths.md).
+
+<!-- risk-paths proof (T801 t10): throwaway, never merge. -->
