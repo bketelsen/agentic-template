@@ -15,6 +15,7 @@ Docs are split by the question they answer:
 
 - [0001 — Record architecture decisions](adr/0001-record-architecture-decisions.md)
 - [0002 — Agent-portable instruction surface](adr/0002-agent-portable-instruction-surface.md)
+- [0003 — Verify gate, risk paths and corrections](adr/0003-verify-gate-risk-paths-and-corrections.md)
 
 ### Design
 

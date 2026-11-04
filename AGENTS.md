@@ -40,9 +40,30 @@ valuable ones: every choice an agent doesn't have to make is a failure mode
 removed. -->
 
 - *(add rules as the code that enforces them lands)*
-- Run the project's full check (`just check`, `make check`, or equivalent —
-  define it early) before calling any change done. CI runs the same recipe,
-  so a local pass is a CI pass.
+- Run `make verify` before you call any change done. CI job `verify` runs
+  `make ci`, which also checks that `.memory/corrections.jsonl` is append-only
+  against the PR base; run `make ci BASE=origin/main` for the same check locally.
+
+**Test reliability.** No sleeps for timing (wait on a condition or inject a
+clock). No network and no wall clock in unit tests (inject them). A flaky test
+gets an issue, then a fix or a quarantine (skip with the issue link) in the
+same PR. Never retry a job or a test until it is green.
+
+**Blocker to guard.** When a review (agent cross-review, owner review, or a
+human) finds a blocking point, the PR that fixes it also adds a guard: a
+targeted test that fails without the fix (preferred), or an `AGENTS.md` rule
+when no test can catch it. The same PR appends 1 line to
+`.memory/corrections.jsonl` (`evidence`: the PR and the review;
+`promoted_to`: the test or the rule). See `.memory/README.md`.
+
+**Risk paths.** `.github/risk-paths.json` lists the high-risk paths; a PR that
+touches one gets `risk:high` from `.github/workflows/risk-paths.yml` and
+declares tier 3. Add a path when you add a file of that kind (signing, auth,
+publish, secrets, destructive operations, CI).
+
+**Vendored files.** `scripts/lib/risk-paths.mjs` and
+`scripts/check-corrections.mjs` are copies from frostyard/core; never edit them
+by hand (`make verify` checks their hashes).
 
 ## Repository boundary
 

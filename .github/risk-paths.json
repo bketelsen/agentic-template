@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "paths": [
+    {
+      "glob": ".github/risk-paths.json",
+      "why": "governance: the high-risk path list"
+    },
+    {
+      "glob": ".github/workflows/**",
+      "why": "governance: CI, the risk-paths caller and token permissions"
+    },
+    {
+      "glob": "Makefile",
+      "why": "governance: the verify gate"
+    },
+    {
+      "glob": "scripts/check-template.mjs",
+      "why": "governance: the template verification gate"
+    },
+    {
+      "glob": "scripts/check-corrections.mjs",
+      "why": "governance: the corrections validation gate"
+    },
+    {
+      "glob": "scripts/lib/**",
+      "why": "governance: the vendored risk-path validator and matcher"
+    }
+  ]
+}
