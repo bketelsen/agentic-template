@@ -41,7 +41,8 @@ removed. -->
 
 - *(add rules as the code that enforces them lands)*
 - Run `make verify` before you call any change done. CI job `verify` runs
-  `make ci`, so a local pass is a CI pass.
+  `make ci`, which also checks that `.memory/corrections.jsonl` is append-only
+  against the PR base; run `make ci BASE=origin/main` for the same check locally.
 
 **Test reliability.** No sleeps for timing (wait on a condition or inject a
 clock). No network and no wall clock in unit tests (inject them). A flaky test

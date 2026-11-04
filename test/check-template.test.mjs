@@ -129,6 +129,14 @@ test("missing .claude/skills link exits 1", (t) => {
   assertFailure(run(root), "agent-symlinks");
 });
 
+test(".agents/skills regular file exits 1", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  rmSync(join(root, ".agents", "skills"), { recursive: true, force: true });
+  writeFileSync(join(root, ".agents", "skills"), "not a directory\n", "utf8");
+  assertFailure(run(root), "agent-symlinks");
+});
+
 test("unindexed doc exits 1", (t) => {
   const root = fixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -149,6 +157,38 @@ test("index link to missing doc exits 1", (t) => {
   const root = fixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));
   writeFileSync(join(root, "docs", "README.md"), "# Docs\n\n[Missing](missing.md)\n", "utf8");
+  assertFailure(run(root), "docs-index");
+});
+
+test("percent-encoded and angle-bracket inline link exits 0", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "docs", "design"), { recursive: true });
+  writeFileSync(join(root, "docs", "design", "a b.md"), "# A\n", "utf8");
+  writeFileSync(join(root, "docs", "README.md"), "# Docs\n\n- [0001](adr/0001-x.md)\n- [A](<design/a%20b.md>)\n", "utf8");
+  assertClean(run(root));
+});
+
+test("reference definition index exits 0", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "docs", "design"), { recursive: true });
+  writeFileSync(join(root, "docs", "design", "ref.md"), "# Ref\n", "utf8");
+  writeFileSync(join(root, "docs", "README.md"), "# Docs\n\n- [0001](adr/0001-x.md)\n[Ref][ref]\n\n[ref]: <design/ref.md> \"Reference\"\n", "utf8");
+  assertClean(run(root));
+});
+
+test("reference definition to missing file exits 1", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(join(root, "docs", "README.md"), "# Docs\n\n- [0001](adr/0001-x.md)\n[Missing][missing]\n\n  [missing]: design/missing.md \"Missing\"\n", "utf8");
+  assertFailure(run(root), "docs-index");
+});
+
+test("bad percent escape exits 1 with docs-index", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(join(root, "docs", "README.md"), "# Docs\n\n- [0001](adr/0001-x.md)\n[Bad](design/%zz.md)\n", "utf8");
   assertFailure(run(root), "docs-index");
 });
 

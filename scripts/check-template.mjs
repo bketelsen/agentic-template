@@ -96,6 +96,15 @@ function checkAgentSymlinks() {
   }
 
   const skillsLink = join(root, ".claude", "skills");
+  const skillsDir = join(root, ".agents", "skills");
+  try {
+    if (!statSync(skillsDir).isDirectory()) {
+      failCheck("agent-symlinks", ".agents/skills", "must be a directory");
+    }
+  } catch {
+    failCheck("agent-symlinks", ".agents/skills", "directory does not exist");
+  }
+
   let skillsStat;
   try {
     skillsStat = lstatSync(skillsLink);
@@ -107,7 +116,7 @@ function checkAgentSymlinks() {
       failCheck("agent-symlinks", ".claude/skills", "must be a symlink");
     } else {
       try {
-        const skillReal = realpathSync(join(root, ".agents", "skills"));
+        const skillReal = realpathSync(skillsDir);
         if (realpathSync(skillsLink) !== skillReal) {
           failCheck("agent-symlinks", ".claude/skills", "symlink points to another directory");
         }
@@ -141,18 +150,34 @@ function checkDocsIndex() {
   indexText = readFileSync(indexFile, "utf8");
 
   const relativeLinks = new Set();
-  const linkPattern = /\]\(([^)\s]+)(?:\s+[^)]*)?\)/g;
-  for (const match of indexText.matchAll(linkPattern)) {
-    let target = match[1];
-    if (/^[A-Za-z][A-Za-z0-9+.-]*:/u.test(target) || target.startsWith("#")) continue;
+
+  function addLinkTarget(rawTarget) {
+    let target = rawTarget;
+    if (/^[A-Za-z][A-Za-z0-9+.-]*:/u.test(target) || target.startsWith("#")) return;
     target = target.split("#", 1)[0];
-    if (!target) continue;
+    if (!target) return;
+    try {
+      target = decodeURIComponent(target);
+    } catch {
+      failCheck("docs-index", "docs/README.md", `bad percent escape in link target ${rawTarget}`);
+      return;
+    }
     const resolved = resolve(docsDir, target);
     if (!existsSync(resolved)) {
       failCheck("docs-index", "docs/README.md", `link to missing path ${target}`);
     }
     relativeLinks.add(resolved);
     counts.links++;
+  }
+
+  const inlineLinkPattern = /\]\(\s*(?:<([^>\n]+)>|([^\)\s]+))/g;
+  for (const match of indexText.matchAll(inlineLinkPattern)) {
+    addLinkTarget(match[1] ?? match[2]);
+  }
+
+  const referenceDefinitionPattern = /^ {0,3}\[[^\]\n]+\]:\s*(?:<([^>\n]+)>|(\S+))/gm;
+  for (const match of indexText.matchAll(referenceDefinitionPattern)) {
+    addLinkTarget(match[1] ?? match[2]);
   }
 
   for (const file of markdownFiles(docsDir)) {
