@@ -42,6 +42,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const failures = [];
+const counts = { docs: 0, links: 0, riskEntries: 0, corrections: "" };
 
 function failCheck(name, file, problem) {
   failures.push({ name, file, problem });
@@ -151,11 +152,13 @@ function checkDocsIndex() {
       failCheck("docs-index", "docs/README.md", `link to missing path ${target}`);
     }
     relativeLinks.add(resolved);
+    counts.links++;
   }
 
   for (const file of markdownFiles(docsDir)) {
     if (file === indexFile) continue;
     if (file.endsWith(`${sep}TEMPLATE.md`) || file.endsWith("/TEMPLATE.md")) continue;
+    counts.docs++;
     if (!relativeLinks.has(file)) {
       const relative = file.slice(root.length + 1).split(sep).join("/");
       failCheck("docs-index", relative, "document is not linked from docs/README.md");
@@ -191,6 +194,7 @@ function checkRiskPaths() {
     if (!existsSync(callerAbsolute)) {
       failCheck("risk-paths", caller, "caller file does not exist");
     }
+    counts.riskEntries = list.paths.length;
     for (const required of [relative, caller]) {
       if (!list.paths.some((entry) => matchGlob(entry.glob, required))) {
         failCheck("risk-paths", relative, `no glob matches the required path ${required}`);
@@ -208,7 +212,7 @@ function checkCorrections() {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();
-    if (output) console.log(output);
+    counts.corrections = output.replace(/^ok\s+corrections:\s*/, "");
   } catch (error) {
     const stdout = String(error.stdout || "").trim();
     const stderr = String(error.stderr || "").trim();
@@ -266,8 +270,8 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log("ok   agent-symlinks: canonical files and symlinks");
-console.log("ok   docs-index: all documents indexed and links resolve");
-console.log("ok   risk-paths: strict list and required caller entries");
-console.log("ok   corrections: inbox valid");
+console.log("ok   agent-symlinks: 4 symlinks resolve to AGENTS.md and .agents/skills");
+console.log(`ok   docs-index: ${counts.docs} docs indexed, ${counts.links} index links resolve`);
+console.log(`ok   risk-paths: ${counts.riskEntries} entries, list and caller listed`);
+console.log(`ok   corrections: ${counts.corrections}`);
 console.log("ok   vendored: 2 pinned core copies match");
