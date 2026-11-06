@@ -9,8 +9,8 @@ One or two sentences describing the project. Start at
 [docs/README.md](docs/README.md).
 
 This file (`AGENTS.md`) is the CANONICAL agent instructions — `CLAUDE.md`,
-`GEMINI.md`, and `.github/copilot-instructions.md` are symlinks to it, and
-`.claude/skills` symlinks to `.agents/skills/`
+`GEMINI.md`, `.cursorrules`, and `.github/copilot-instructions.md` are symlinks
+to it, and `.claude/skills` symlinks to `.agents/skills/`
 ([ADR-0002](docs/adr/0002-agent-portable-instruction-surface.md)). Edit only
 the canonical paths; keep content tool-agnostic.
 
@@ -43,6 +43,9 @@ removed. -->
 - Run `make verify` before you call any change done. CI job `verify` runs
   `make ci`, which also checks that `.memory/corrections.jsonl` is append-only
   against the PR base; run `make ci BASE=origin/main` for the same check locally.
+- `mise.toml` and `mise.lock` pin every tool the gate runs (ADR-0043 in core);
+  run `mise install` to get those versions. Change a pin only with `mise lock`,
+  in a commit of its own.
 
 **Test reliability.** No sleeps for timing (wait on a condition or inject a
 clock). No network and no wall clock in unit tests (inject them). A flaky test

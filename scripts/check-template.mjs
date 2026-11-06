@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Template gate (ADR-0003), run by `make verify`. Checks:
-//   agent-symlinks  CLAUDE.md, GEMINI.md and .github/copilot-instructions.md
-//                   resolve to AGENTS.md; .claude/skills to .agents/skills (ADR-0002).
+//   agent-symlinks  CLAUDE.md, GEMINI.md, .cursorrules and
+//                   .github/copilot-instructions.md resolve to AGENTS.md;
+//                   .claude/skills to .agents/skills (ADR-0002).
 //   docs-index      every doc under docs/ (not TEMPLATE.md) is linked from
 //                   docs/README.md, and every relative link there resolves.
 //   risk-paths      .github/risk-paths.json passes core's validator, and rule C:
@@ -71,6 +72,7 @@ function checkAgentSymlinks() {
   const links = [
     ["CLAUDE.md", "AGENTS.md"],
     ["GEMINI.md", "AGENTS.md"],
+    [".cursorrules", "AGENTS.md"],
     [".github/copilot-instructions.md", "AGENTS.md"],
   ];
   for (const [relative, _targetName] of links) {
@@ -295,7 +297,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log("ok   agent-symlinks: 4 symlinks resolve to AGENTS.md and .agents/skills");
+console.log("ok   agent-symlinks: 5 symlinks resolve to AGENTS.md and .agents/skills");
 console.log(`ok   docs-index: ${counts.docs} docs indexed, ${counts.links} index links resolve`);
 console.log(`ok   risk-paths: ${counts.riskEntries} entries, list and caller listed`);
 console.log(`ok   corrections: ${counts.corrections}`);
