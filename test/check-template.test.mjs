@@ -36,6 +36,7 @@ function fixture() {
   writeFileSync(join(root, "AGENTS.md"), "# Test instructions\n", "utf8");
   symlinkSync("AGENTS.md", join(root, "CLAUDE.md"));
   symlinkSync("AGENTS.md", join(root, "GEMINI.md"));
+  symlinkSync("AGENTS.md", join(root, ".cursorrules"));
   symlinkSync("../AGENTS.md", join(root, ".github", "copilot-instructions.md"));
   symlinkSync("../.agents/skills", join(root, ".claude", "skills"));
 
@@ -119,6 +120,21 @@ test("copilot instruction link to another file exits 1", (t) => {
   unlinkSync(join(root, ".github", "copilot-instructions.md"));
   writeFileSync(join(root, "other.md"), "other\n", "utf8");
   symlinkSync("../other.md", join(root, ".github", "copilot-instructions.md"));
+  assertFailure(run(root), "agent-symlinks");
+});
+
+test("cursorrules missing exits 1", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  unlinkSync(join(root, ".cursorrules"));
+  assertFailure(run(root), "agent-symlinks");
+});
+
+test(".cursorrules as a regular file exits 1", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  unlinkSync(join(root, ".cursorrules"));
+  writeFileSync(join(root, ".cursorrules"), "AGENTS.md\n", "utf8");
   assertFailure(run(root), "agent-symlinks");
 });
 
