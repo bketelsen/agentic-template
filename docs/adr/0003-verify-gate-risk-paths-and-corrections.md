@@ -30,16 +30,13 @@ The repository copies the risk-path library and corrections checker from
 frostyard/core. `make verify` records and checks a SHA-256 pin for each copied
 file. A core update is a copy from the pinned core commit, not a manual edit.
 
-`mise.toml` and `mise.lock` pin the Node release that CI installs.
-
 ## Consequences
 
 - Node.js 22 or later and `make` are required for local verification.
 - `make verify` has no package install, `package.json` or third-party runtime dependency.
-- A repository made from this template needs 3 manual steps: create the
-  `risk:high` label, add a branch ruleset that requires `verify`, and enable
-  private vulnerability reporting. The template does not copy repository
-  settings, labels or rulesets.
+- A repository made from this template needs 2 manual steps: create the
+  `risk:high` label and add a branch ruleset that requires `verify`. The template
+  does not copy rulesets or labels.
 - The vendored core files stay independent of project dependencies. Updates
   require a copy from core and a hash-pin update.
 - A risk:high pull request declares tier 3 and waits for the repository's owner
@@ -65,4 +62,3 @@ file. A core update is a copy from the pinned core commit, not a manual edit.
 - Risk label rationale: [frostyard/core docs/adr/0068-label-pull-requests-that-touch-high-risk-paths.md](https://github.com/frostyard/core/blob/main/docs/adr/0068-label-pull-requests-that-touch-high-risk-paths.md)
 - Corrections surface rationale: [frostyard/core docs/adr/0018-org-wide-agent-instruction-and-knowledge-surfaces.md](https://github.com/frostyard/core/blob/main/docs/adr/0018-org-wide-agent-instruction-and-knowledge-surfaces.md)
 - Verify triad rationale: [frostyard/core docs/adr/0044-expose-the-make-gate-triad-in-every-repository.md](https://github.com/frostyard/core/blob/main/docs/adr/0044-expose-the-make-gate-triad-in-every-repository.md)
-- Tool pins rationale: [frostyard/core docs/adr/0043-pin-repository-tools-in-mise-and-name-the-verify-gate.md](https://github.com/frostyard/core/blob/main/docs/adr/0043-pin-repository-tools-in-mise-and-name-the-verify-gate.md)

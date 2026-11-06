@@ -7,16 +7,16 @@
 
 The project is maintained by whichever coding agent is available — each tool
 reads its own instruction file (`CLAUDE.md`, `.github/copilot-instructions.md`,
-`GEMINI.md`, `.cursorrules`, `AGENTS.md`) and its own skills location
-(`.claude/skills/`). Duplicating conventions per tool guarantees drift, and
-drift means different agents follow different law.
+`GEMINI.md`, `AGENTS.md`) and its own skills location (`.claude/skills/`).
+Duplicating conventions per tool guarantees drift, and drift means different
+agents follow different law.
 
 ## Decision
 
 One canonical surface, tool paths as symlinks:
 
 - **`AGENTS.md`** (the emerging cross-tool standard) is the real file holding
-  all conventions. `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, and
+  all conventions. `CLAUDE.md`, `GEMINI.md`, and
   `.github/copilot-instructions.md` are symlinks to it.
 - **`.agents/skills/`** is the real skills directory (`<skill>/SKILL.md` with
   YAML frontmatter). `.claude/skills` is a symlink to it.

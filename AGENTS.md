@@ -80,7 +80,10 @@ Docs live in `docs/` in four categories. **Every new doc starts from its
 category's `TEMPLATE.md`** and follows its structure:
 
 - `docs/adr/` — why we decided. Immutable once Accepted; reversals are new
-  ADRs that mark the old one Superseded.
+  ADRs that mark the old one Superseded. This includes ADRs 0001 to 0003 that
+  come with the template: their `YYYY-MM-DD` date is a placeholder, not a
+  draft status. A new org-wide rule goes in a core ADR listed in
+  `docs/org-adrs.md`; a new project rule goes in a new ADR.
 - `docs/design/` — how it fits together. Living; updated in place to match
   reality.
 - `docs/specs/` — exact contracts. Change only alongside implementing code.
