@@ -44,4 +44,4 @@ One canonical surface, tool paths as symlinks:
 ## References
 
 - Builds on: [ADR-0001](0001-record-architecture-decisions.md)
-- Shapes: `AGENTS.md`, [.agents/skills/](../../.agents/skills/)
+- Shapes: `AGENTS.md`, [.agents/skills/](../../.agents/skills/), [design: agent-ready repository](../design/agent-ready-repository.md)

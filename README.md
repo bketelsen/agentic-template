@@ -33,7 +33,7 @@ A GitHub template for repositories that LLM agents build and maintain, for maint
 7. For a released Go project, add `.svu.yml` and a `bump` target that runs `svu next`; use the Go and golangci-lint versions of core's `frostyard-go-repo` skill.
 8. For a user-facing tool, add a `site/` documentation site (core [ADR-0070](https://github.com/frostyard/core/blob/main/docs/adr/0070-build-tool-docs-sites-with-materialx-on-github-pages.md)).
 9. Write the first real ADR, `0004`, for the first significant choice — language, framework or storage — and continue for later choices.
-10. Write `README.md` for the new project from core's [frostyard-readme skill](https://github.com/frostyard/core/blob/main/.agents/skills/frostyard-readme/SKILL.md) and [core ADR-0072](https://github.com/frostyard/core/blob/main/docs/adr/0072-write-every-readme-to-one-standard.md). Run its checker, `check-readme.mjs`, until it prints `ok`.
+10. Write `README.md` for the new project from core's [frostyard-readme skill](https://github.com/frostyard/core/blob/main/.agents/skills/frostyard-readme/SKILL.md) and [core ADR-0072](https://github.com/frostyard/core/blob/main/docs/adr/0072-write-every-readme-to-one-standard.md). Run its checker, `check-readme.mjs`, until it prints `ok`. Update [docs/design/agent-ready-repository.md](docs/design/agent-ready-repository.md) when the project changes its structure.
 11. Complete the repository admin steps for the label, ruleset, private vulnerability reporting and risk paths in [docs/new-repository.md](docs/new-repository.md).
 
 The full checklist is core's [repository baseline spec](https://github.com/frostyard/core/blob/main/docs/specs/repository-baseline.md).

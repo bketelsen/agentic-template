@@ -32,4 +32,4 @@ ADR that marks the old one `Superseded by NNNN`.
 
 ## References
 
-- Shapes: [docs/README.md](../README.md), every future ADR
+- Shapes: [docs/README.md](../README.md), [design: agent-ready repository](../design/agent-ready-repository.md), every future ADR

@@ -5,7 +5,7 @@ Contracts: [repository baseline spec](https://github.com/frostyard/core/blob/mai
 
 ## Overview
 
-This GitHub template contains no application code. It gives repositories built and maintained by LLM agents a portable instruction surface, category-based documentation, reusable skills, a verification gate and a corrections loop. The structure is extracted from [bespoke](https://github.com/bketelsen/bespoke), where it has held up across coding agents.
+This repository uses the structure of [bketelsen/agentic-template](https://github.com/bketelsen/agentic-template): a portable instruction surface, category-based documentation, reusable skills, a verification gate and a corrections loop, for work that LLM agents build and maintain. The structure is extracted from [bespoke](https://github.com/bketelsen/bespoke), where it has held up across coding agents. In the template itself, this structure is the whole content: it has no application code. A repository made from the template keeps this document and updates it in place when its own structure changes, as it does for every design document.
 
 ## Design
 
@@ -19,7 +19,7 @@ Agents succeed when the repository answers their questions before they ask:
 - **Skills over improvisation.** Multi-step procedures that repeat become `.agents/skills/<name>/SKILL.md` files with a frontmatter description agents can select on. Explaining a procedure twice means it should become a skill.
 - **A verify gate protects the template.** `make verify` checks the canonical surfaces, documentation index, risk paths, corrections inbox and vendored copies. The risk-path list labels high-risk pull requests; the corrections inbox turns blocking reviews into guards.
 
-**Layout.** The template's top-level parts and the layout files are:
+**Layout.** The parts that the template brings are:
 
 | Path | What it is |
 | --- | --- |

@@ -57,7 +57,7 @@ file. A core update is a copy from the pinned core commit, not a manual edit.
 ## References
 
 - Builds on: [ADR-0001](0001-record-architecture-decisions.md), [ADR-0002](0002-agent-portable-instruction-surface.md)
-- Shapes: [`AGENTS.md`](../../AGENTS.md), [`Makefile`](../../Makefile), [`.github/risk-paths.json`](../../.github/risk-paths.json)
+- Shapes: [`AGENTS.md`](../../AGENTS.md), [`Makefile`](../../Makefile), [`.github/risk-paths.json`](../../.github/risk-paths.json), [design: agent-ready repository](../design/agent-ready-repository.md)
 - Risk-path contract: [frostyard/core docs/specs/risk-paths.md](https://github.com/frostyard/core/blob/main/docs/specs/risk-paths.md)
 - Risk label rationale: [frostyard/core docs/adr/0068-label-pull-requests-that-touch-high-risk-paths.md](https://github.com/frostyard/core/blob/main/docs/adr/0068-label-pull-requests-that-touch-high-risk-paths.md)
 - Corrections surface rationale: [frostyard/core docs/adr/0018-org-wide-agent-instruction-and-knowledge-surfaces.md](https://github.com/frostyard/core/blob/main/docs/adr/0018-org-wide-agent-instruction-and-knowledge-surfaces.md)
