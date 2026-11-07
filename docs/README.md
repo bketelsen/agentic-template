@@ -21,9 +21,13 @@ Docs are split by the question they answer:
 
 - [Org-wide decisions (frostyard/core ADRs)](org-adrs.md)
 
+### Guides
+
+- [After you create a repository from this template](new-repository.md)
+
 ### Design
 
-*(none yet)*
+- [Agent-ready repository](design/agent-ready-repository.md)
 
 ### Specs
 
