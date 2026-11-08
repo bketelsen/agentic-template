@@ -19,6 +19,7 @@ each one binds here, and where it lives in this repository.
 - [ADR-0051 — ADRs state facts only, not the process that produced them](https://github.com/frostyard/core/blob/main/docs/adr/0051-adrs-state-facts-not-process.md) — the ADRs in [`adr/`](adr/) state facts only.
 - [ADR-0068 — Label pull requests that touch high-risk paths](https://github.com/frostyard/core/blob/main/docs/adr/0068-label-pull-requests-that-touch-high-risk-paths.md) — [`risk-paths.json`](../.github/risk-paths.json) lists the high-risk paths, and [`risk-paths.yml`](../.github/workflows/risk-paths.yml) adds the `risk:high` label.
 - [ADR-0071 — Hold every code repository to one baseline](https://github.com/frostyard/core/blob/main/docs/adr/0071-hold-every-code-repository-to-one-baseline.md) — every code repository carries the baseline checklist ([spec](https://github.com/frostyard/core/blob/main/docs/specs/repository-baseline.md)). It has a [`LICENSE`](../LICENSE), a [Dependabot config](../.github/dependabot.yml), and a [`ci.yml`](../.github/workflows/ci.yml) that runs `make ci`. It has no `CODEOWNERS`.
+- [ADR-0075 — Group Dependabot updates and sync skills once a day](https://github.com/frostyard/core/blob/main/docs/adr/0075-batch-routine-pull-requests.md) — each entry of [`.github/dependabot.yml`](../.github/dependabot.yml) has 1 `patterns: ["*"]` group, so Dependabot opens at most 1 version-update PR for each ecosystem and run; security updates stay 1 PR each
 
 ## When they apply
 
