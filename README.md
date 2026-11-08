@@ -29,7 +29,7 @@ A GitHub template for repositories that LLM agents build and maintain, for maint
 3. Set the dates in `docs/adr/0001`, `0002` and `0003` to today; these ADRs are pre-accepted because this template implements them.
 4. Set the copyright holder and year in `LICENSE`. Keep MIT unless the project inherits GPL-3.0.
 5. Replace the repository URL and supported-versions section in `SECURITY.md` with your own values.
-6. Add a `.github/dependabot.yml` entry for each package ecosystem that the project adds: `gomod`, `npm`, `cargo`, `docker`.
+6. Add a `.github/dependabot.yml` entry for each package ecosystem that the project adds: `gomod`, `npm`, `cargo`, `docker`. Give each entry 1 group with `patterns: ["*"]` and no `applies-to`, like the `github-actions` entry (core [ADR-0075](https://github.com/frostyard/core/blob/main/docs/adr/0075-batch-routine-pull-requests.md)).
 7. For a released Go project, add `.svu.yml` and a `bump` target that runs `svu next`; use the Go and golangci-lint versions of core's `frostyard-go-repo` skill.
 8. For a user-facing tool, add a `site/` documentation site (core [ADR-0070](https://github.com/frostyard/core/blob/main/docs/adr/0070-build-tool-docs-sites-with-materialx-on-github-pages.md)).
 9. Write the first real ADR, `0004`, for the first significant choice — language, framework or storage — and continue for later choices.
