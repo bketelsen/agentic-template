@@ -260,7 +260,9 @@ function checkCaller(caller) {
     const line = lines[index];
     if (line.inBlock) continue;
     const stripped = line.text.trim();
-    if (stripped !== "" && line.indent <= 2) break;
+    // A comment-only line never ends a YAML mapping, whatever its indent.
+    if (stripped === "" || stripped.startsWith("#")) continue;
+    if (line.indent <= 2) break;
     if (line.indent === 4 && /^uses:/u.test(stripped)) {
       uses = usesValue(stripped);
       break;

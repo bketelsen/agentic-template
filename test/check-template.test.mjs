@@ -361,6 +361,20 @@ test("caller that renames the job exits 1", (t) => {
   assertFailure(run(root), "must run the reusable workflow in the job pr-triage");
 });
 
+test("caller with comments at indent 0 and 2 before uses exits 0", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const caller = join(root, ".github", "workflows", "risk-paths.yml");
+  const text = readFileSync(caller, "utf8");
+  const withComments = text.replace(
+    "\n    uses: ",
+    "\n  # Keep the reusable workflow SHA-pinned.\n# core ADR-0021\n\n    uses: ",
+  );
+  assert.notEqual(withComments, text);
+  writeFileSync(caller, withComments, "utf8");
+  assertClean(run(root));
+});
+
 test("caller with the pinned uses in another job exits 1", (t) => {
   const root = fixture();
   t.after(() => rmSync(root, { recursive: true, force: true }));
