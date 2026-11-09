@@ -17,7 +17,7 @@ Agents succeed when the repository answers their questions before they ask:
 - **Mandatory cross-linking.** ADRs link the designs they shape; designs link their ADRs, specs, and roadmap phase; specs link back. A doc without its links is defined as incomplete, so the graph stays navigable from any entry point.
 - **Live conventions only.** AGENTS.md's code-conventions section describes the code *as it is* — rules graduate in when the enforcing code lands. Agents following stale rules produce broken work; this structure makes stale rules a category error.
 - **Skills over improvisation.** Multi-step procedures that repeat become `.agents/skills/<name>/SKILL.md` files with a frontmatter description agents can select on. Explaining a procedure twice means it should become a skill.
-- **A verify gate protects the template.** `make verify` checks the canonical surfaces, documentation index, risk paths, corrections inbox and vendored copies. The risk-path list labels high-risk pull requests; the corrections inbox turns blocking reviews into guards.
+- **A verify gate protects the template.** `make verify` checks the canonical surfaces, documentation index, risk paths, corrections inbox and vendored copies. The risk-path list gives every path a level, and the caller labels pull requests with it; the corrections inbox turns blocking reviews into guards.
 
 **Layout.** The parts that the template brings are:
 
@@ -41,21 +41,21 @@ Agents succeed when the repository answers their questions before they ask:
 | `LICENSE` | MIT license text |
 | `SECURITY.md` | Private vulnerability reporting |
 | `scripts/` | Template and corrections gates |
-| `scripts/lib/risk-paths.mjs` | Pinned risk-path validator and matcher |
+| `scripts/lib/risk-paths.mjs` | Pinned risk-path validator, matcher and levels |
 | `scripts/check-template.mjs` | Template verification entry point |
 | `scripts/check-corrections.mjs` | Pinned append-only corrections gate |
 | `test/` | Node.js test fixtures and gate tests |
 | `.memory/` | Append-only corrections inbox |
-| `.github/risk-paths.json` | High-risk repository paths |
+| `.github/risk-paths.json` | High-risk repository paths, with a level for each |
 | `.github/dependabot.yml` | Dependency update configuration |
 | `.github/pull_request_template.md` | Risk tier and verification checklist |
-| `.github/workflows/` | CI and risk-paths caller workflows |
+| `.github/workflows/` | CI and PR triage caller workflows |
 
 ## Operational notes
 
 `mise install` provisions the pinned Node.js. `make verify` needs only Node.js 22 or later and `make`; it uses no package manager, `package.json`, install step or third-party dependency. Symlinks require Linux or macOS, or `core.symlinks=true` on Windows. GitHub's web renderer shows a symlink as its target path; this is cosmetic only.
 
-The verify gate checks canonical surfaces, the documentation index, risk paths, the corrections inbox and vendored copies. Pull requests that match `.github/risk-paths.json` get the `risk:high` label. Blocking reviews become targeted tests or `AGENTS.md` rules with a corrections entry.
+The verify gate checks canonical surfaces, the documentation index, risk paths, the corrections inbox and vendored copies. A pull request that matches `.github/risk-paths.json` gets the level label of its strictest matched path, and `risk:high` at L1 or L2. Blocking reviews become targeted tests or `AGENTS.md` rules with a corrections entry.
 
 ## References
 

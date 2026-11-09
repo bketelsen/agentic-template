@@ -42,6 +42,10 @@ file. A core update is a copy from the pinned core commit, not a manual edit.
 - A risk:high pull request declares tier 3 and waits for the repository's owner
   review policy.
 - A blocking review produces a guard and a durable correction record.
+- **Note, 2026-11-09:** the list is schema version 2 and the caller runs core's
+  `pr-triage.yml`, so a matched pull request gets 1 level label, `level:L1` to
+  `level:L4`, and `risk:high` only at L1 and L2 (core ADR-0068, ADR-0077 and
+  ADR-0078). The manual steps are now the 5 labels and the branch ruleset.
 
 ## Alternatives considered
 

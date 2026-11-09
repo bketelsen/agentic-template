@@ -59,10 +59,14 @@ when no test can catch it. The same PR appends 1 line to
 `.memory/corrections.jsonl` (`evidence`: the PR and the review;
 `promoted_to`: the test or the rule). See `.memory/README.md`.
 
-**Risk paths.** `.github/risk-paths.json` lists the high-risk paths; a PR that
-touches one gets `risk:high` from `.github/workflows/risk-paths.yml` and
-declares tier 3. Add a path when you add a file of that kind (signing, auth,
-publish, secrets, destructive operations, CI).
+**Risk paths.** `.github/risk-paths.json` is a level list (schema version 2):
+every glob carries a level, and a PR that touches one gets that level label from
+`.github/workflows/risk-paths.yml` (`level:L1` read every line, `level:L2` read
+the diff, `level:L3` skim, `level:L4` title and CI), plus `risk:high` at L1 and
+L2, which declares tier 3. The same caller removes `ready-for-human` when the
+head moves after the label. Add a path when you add a file of that kind
+(signing, auth, publish, secrets, destructive operations, CI), with a `why` that
+names its category. The gate requires schema version 2.
 
 **Vendored files.** `scripts/lib/risk-paths.mjs` and
 `scripts/check-corrections.mjs` are copies from frostyard/core; never edit them
