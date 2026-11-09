@@ -197,11 +197,43 @@ function checkDocsIndex() {
 
 // c. Strict risk-path list at schema version 2, the caller pin, and rule C.
 const CALLER_PATH = ".github/workflows/risk-paths.yml";
-const CALLER_PIN = /^[ \t]*uses:[ \t]*frostyard\/core\/\.github\/workflows\/pr-triage\.yml@[0-9a-f]{40}(?:[ \t]+#.*)?[ \t]*$/m;
-const CALLER_JOB = /^ {2}pr-triage:[ \t]*$/m;
+const CALLER_WORKFLOW = /^frostyard\/core\/\.github\/workflows\/pr-triage\.yml@[0-9a-f]{40}$/;
+const CALLER_JOB = "pr-triage";
 
-// The caller file: core's reusable pr-triage workflow, at a full SHA, in the
-// job pr-triage (frostyard/core docs/specs/risk-paths.md, rule E).
+// The lines of a workflow that are not part of a block scalar: a line under a
+// `key: |` or `key: >` scalar is text a step runs, never a workflow key. The
+// caller structure is small enough to read line by line, so the gate needs no
+// YAML dependency.
+function structureLines(text) {
+  const lines = [];
+  let blockIndent = -1;
+  for (const raw of text.split(/\r?\n/u)) {
+    const indent = raw.length - raw.trimStart().length;
+    const blank = raw.trim() === "";
+    if (blockIndent >= 0) {
+      if (blank || indent > blockIndent) {
+        lines.push({ text: raw, indent, inBlock: true });
+        continue;
+      }
+      blockIndent = -1;
+    }
+    lines.push({ text: raw, indent, inBlock: false });
+    if (blank) continue;
+    const scalar = /^\s*(?:-\s+)?[\w.-]+:[ \t]+([|>][-+0-9]*)[ \t]*(?:#.*)?$/u.exec(raw);
+    if (scalar) blockIndent = indent;
+  }
+  return lines;
+}
+
+// The value of a `uses:` key line, without a trailing comment.
+function usesValue(text) {
+  return text.trim().replace(/^uses:[ \t]*/u, "").replace(/[ \t]+#.*$/u, "").trim();
+}
+
+// The caller file: core's reusable pr-triage workflow, as the `uses:` key at
+// indent 4 of the job pr-triage (frostyard/core docs/specs/risk-paths.md, rule E).
+// A uses: line in another job, or the same text inside a run: block, is not the
+// caller and must not pass.
 function checkCaller(caller) {
   let text;
   try {
@@ -210,15 +242,44 @@ function checkCaller(caller) {
     failCheck("risk-paths", caller, "caller file does not exist");
     return;
   }
-  if (!CALLER_PIN.test(text)) {
+  const lines = structureLines(text);
+  const jobsAt = lines.findIndex((line) => !line.inBlock && line.indent === 0 && /^jobs:[ \t]*(?:#.*)?$/u.test(line.text));
+  if (jobsAt < 0) {
+    failCheck("risk-paths", caller, `has no top-level jobs: key, so it has no job ${CALLER_JOB}`);
+    return;
+  }
+  const jobAt = lines.findIndex((line, index) => index > jobsAt && !line.inBlock
+    && line.indent === 2 && /^[^\s#][^:]*:[ \t]*(?:#.*)?$/u.test(line.text.trimStart())
+    && line.text.trim().replace(/:.*$/u, "") === CALLER_JOB);
+  if (jobAt < 0) {
+    failCheck("risk-paths", caller, `must run the reusable workflow in the job ${CALLER_JOB}`);
+    return;
+  }
+  let uses = null;
+  for (let index = jobAt + 1; index < lines.length; index++) {
+    const line = lines[index];
+    if (line.inBlock) continue;
+    const stripped = line.text.trim();
+    if (stripped !== "" && line.indent <= 2) break;
+    if (line.indent === 4 && /^uses:/u.test(stripped)) {
+      uses = usesValue(stripped);
+      break;
+    }
+  }
+  if (uses === null) {
     failCheck(
       "risk-paths",
       caller,
-      "must call frostyard/core/.github/workflows/pr-triage.yml pinned to a full 40-character commit SHA (core ADR-0021)",
+      `the job ${CALLER_JOB} must set uses: at 4 spaces to frostyard/core/.github/workflows/pr-triage.yml at a full 40-character commit SHA; a uses: line in another job or in a run: block does not count`,
     );
+    return;
   }
-  if (!CALLER_JOB.test(text)) {
-    failCheck("risk-paths", caller, "must run the reusable workflow in the job pr-triage");
+  if (!CALLER_WORKFLOW.test(uses)) {
+    failCheck(
+      "risk-paths",
+      caller,
+      `the uses: of the job ${CALLER_JOB} must be frostyard/core/.github/workflows/pr-triage.yml@<40-character commit SHA>, not ${JSON.stringify(uses)} (core ADR-0021)`,
+    );
   }
 }
 

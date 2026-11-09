@@ -346,11 +346,11 @@ test("caller that still pins core's risk-paths workflow exits 1", (t) => {
     "  pull_request_target:",
     "permissions: {}",
     "jobs:",
-    "  risk-paths:",
+    "  pr-triage:",
     `    uses: frostyard/core/.github/workflows/risk-paths.yml@${coreSha}`,
     "",
   ].join("\n"), "utf8");
-  assertFailure(run(root), "must call frostyard/core/.github/workflows/pr-triage.yml");
+  assertFailure(run(root), "the uses: of the job pr-triage must be frostyard/core/.github/workflows/pr-triage.yml@");
 });
 
 test("caller that renames the job exits 1", (t) => {
@@ -359,6 +359,54 @@ test("caller that renames the job exits 1", (t) => {
   const caller = join(root, ".github", "workflows", "risk-paths.yml");
   writeFileSync(caller, readFileSync(caller, "utf8").replace("\n  pr-triage:\n", "\n  triage:\n"), "utf8");
   assertFailure(run(root), "must run the reusable workflow in the job pr-triage");
+});
+
+test("caller with the pinned uses in another job exits 1", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(join(root, ".github", "workflows", "risk-paths.yml"), [
+    "name: PR triage",
+    "on:",
+    "  pull_request_target:",
+    "    types: [opened, synchronize, reopened, edited, labeled]",
+    "permissions: {}",
+    "jobs:",
+    "  pr-triage:",
+    "    runs-on: ubuntu-latest",
+    "    permissions:",
+    "      contents: read",
+    "    steps:",
+    "      - run: echo triage",
+    "  triage:",
+    "    permissions:",
+    "      contents: read",
+    "      pull-requests: write",
+    `    uses: frostyard/core/.github/workflows/pr-triage.yml@${coreSha} # frostyard/core main`,
+    "",
+  ].join("\n"), "utf8");
+  assertFailure(run(root), "the job pr-triage must set uses: at 4 spaces");
+});
+
+test("caller with the pinned uses inside a run block exits 1", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  writeFileSync(join(root, ".github", "workflows", "risk-paths.yml"), [
+    "name: PR triage",
+    "on:",
+    "  pull_request_target:",
+    "    types: [opened, synchronize, reopened, edited, labeled]",
+    "permissions: {}",
+    "jobs:",
+    "  pr-triage:",
+    "    runs-on: ubuntu-latest",
+    "    permissions:",
+    "      contents: read",
+    "    steps:",
+    "      - run: |",
+    `          uses: frostyard/core/.github/workflows/pr-triage.yml@${coreSha}`,
+    "",
+  ].join("\n"), "utf8");
+  assertFailure(run(root), "the job pr-triage must set uses: at 4 spaces");
 });
 
 test("correction with a sixth field exits 1", (t) => {

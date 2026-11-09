@@ -55,7 +55,7 @@ Agents succeed when the repository answers their questions before they ask:
 
 `mise install` provisions the pinned Node.js. `make verify` needs only Node.js 22 or later and `make`; it uses no package manager, `package.json`, install step or third-party dependency. Symlinks require Linux or macOS, or `core.symlinks=true` on Windows. GitHub's web renderer shows a symlink as its target path; this is cosmetic only.
 
-The verify gate checks canonical surfaces, the documentation index, risk paths, the corrections inbox and vendored copies. A pull request that matches `.github/risk-paths.json` gets the level label of its strictest matched path, and `risk:high` at L1 or L2. Blocking reviews become targeted tests or `AGENTS.md` rules with a corrections entry.
+The verify gate checks canonical surfaces, the documentation index, risk paths, the corrections inbox and vendored copies. A pull request that touches `.github/risk-paths.json` gets 1 level label, and `risk:high` at L1 or L2; core takes the level from the matched globs, `default_level` and the org floors, and it never lowers a level label that the pull request already has. Blocking reviews become targeted tests or `AGENTS.md` rules with a corrections entry.
 
 ## References
 

@@ -9,7 +9,7 @@ latest base branch. Reviews apply the repository's docs and PR rules. -->
 
 Declare the highest applicable tier, never lower. A `risk:high` label (a path in `.github/risk-paths.json` at L1 or L2) means tier 3. A project can replace this scale in an ADR.
 
-Level: `level:L1` to `level:L4` — added by `.github/workflows/risk-paths.yml` from the level of the strictest matched path. At L1, name each matched path in this body and say why the change is safe.
+Level: `level:L1` to `level:L4` — core computes it from the matched globs, `default_level` and the org floors, and it never lowers a level label. At L1, name each matched path in this body and say why the change is safe.
 
 Scale: 1 low = docs, tests, comments; 2 medium = behaviour change in code; 3 high = security, data loss, releases or publishing, CI and permissions, or any `risk:high` label.
 
