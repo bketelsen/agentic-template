@@ -2,13 +2,25 @@
 
 [Back to the README](../README.md).
 
-1. Create the `risk:high` label:
+1. Create the 5 labels:
 
    ```sh
    gh label create risk:high --repo OWNER/REPO --color B60205 --description "Touches a path in .github/risk-paths.json"
+   gh label create level:L1 --repo OWNER/REPO --color B60205 --description "Read every line"
+   gh label create level:L2 --repo OWNER/REPO --color D93F0B --description "Read the diff"
+   gh label create level:L3 --repo OWNER/REPO --color FBCA04 --description "Skim"
+   gh label create level:L4 --repo OWNER/REPO --color 0E8A16 --description "Title and CI"
    ```
 
-   Without this label, the risk-paths job fails.
+   Labels are not copied from a template. Without `risk:high`, the PR triage job
+   fails. Without a level label, it runs, writes a warning to the job summary and
+   adds no level label. As an organization admin you can instead run core's
+   script from a frostyard/core checkout; it creates the 4 level labels and
+   never changes an existing label:
+
+   ```sh
+   scripts/apply-triage-settings.sh OWNER/REPO --apply
+   ```
 
 2. Add a ruleset on the default branch: it requires the `verify` check and a
    pull request for every change, and it blocks deletion and force-push.
@@ -38,5 +50,9 @@
    gh api -X PUT repos/OWNER/REPO/private-vulnerability-reporting
    ```
 
-4. Add your repository's high-risk paths to `.github/risk-paths.json`. Use globs
-   and a category from the [core risk-path specification](https://github.com/frostyard/core/blob/main/docs/specs/risk-paths.md).
+4. Add your repository's high-risk paths to `.github/risk-paths.json`. The list
+   is schema version 2: give every glob a level from `L1` to `L4` and a `why`
+   that names its category, and set `default_level` (`L3` is the usual choice).
+   Only L1 and L2 add `risk:high`. Use the categories, and the grading rule from
+   version 1 to version 2, of the
+   [core risk-path specification](https://github.com/frostyard/core/blob/main/docs/specs/risk-paths.md).

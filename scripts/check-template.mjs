@@ -5,9 +5,11 @@
 //                   .claude/skills to .agents/skills (ADR-0002).
 //   docs-index      every doc under docs/ (not TEMPLATE.md) is linked from
 //                   docs/README.md, and every relative link there resolves.
-//   risk-paths      .github/risk-paths.json passes core's validator, and rule C:
-//                   the list and the caller are listed (frostyard/core
-//                   docs/specs/risk-paths.md).
+//   risk-paths      .github/risk-paths.json passes core's validator at schema
+//                   version 2 with a level in each entry, and rule C: the list
+//                   and the caller are listed, both at L1 or L2. The caller
+//                   runs frostyard/core's pr-triage.yml at a full commit SHA
+//                   in the job pr-triage (frostyard/core docs/specs/risk-paths.md).
 //   corrections     .memory/corrections.jsonl passes core's line rules
 //                   (frostyard/core ADR-0018 schema), via scripts/check-corrections.mjs.
 //   vendored        the 2 files copied from frostyard/core match their sha256 pins.
@@ -23,7 +25,7 @@ import {
 } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { matchGlob, parseStrictJson, validateRiskPaths } from "./lib/risk-paths.mjs";
+import { checkRequiredPaths, parseStrictJson, validateRiskPaths } from "./lib/risk-paths.mjs";
 
 const scriptDir = resolve(dirname(fileURLToPath(import.meta.url)));
 const usage = "Usage: node scripts/check-template.mjs [--root DIR]";
@@ -193,7 +195,96 @@ function checkDocsIndex() {
   }
 }
 
-// c. Strict risk-path list and Rule C required entries.
+// c. Strict risk-path list at schema version 2, the caller pin, and rule C.
+const CALLER_PATH = ".github/workflows/risk-paths.yml";
+const CALLER_WORKFLOW = /^frostyard\/core\/\.github\/workflows\/pr-triage\.yml@[0-9a-f]{40}$/;
+const CALLER_JOB = "pr-triage";
+
+// The lines of a workflow that are not part of a block scalar: a line under a
+// `key: |` or `key: >` scalar is text a step runs, never a workflow key. The
+// caller structure is small enough to read line by line, so the gate needs no
+// YAML dependency.
+function structureLines(text) {
+  const lines = [];
+  let blockIndent = -1;
+  for (const raw of text.split(/\r?\n/u)) {
+    const indent = raw.length - raw.trimStart().length;
+    const blank = raw.trim() === "";
+    if (blockIndent >= 0) {
+      if (blank || indent > blockIndent) {
+        lines.push({ text: raw, indent, inBlock: true });
+        continue;
+      }
+      blockIndent = -1;
+    }
+    lines.push({ text: raw, indent, inBlock: false });
+    if (blank) continue;
+    const scalar = /^\s*(?:-\s+)?[\w.-]+:[ \t]+([|>][-+0-9]*)[ \t]*(?:#.*)?$/u.exec(raw);
+    if (scalar) blockIndent = indent;
+  }
+  return lines;
+}
+
+// The value of a `uses:` key line, without a trailing comment.
+function usesValue(text) {
+  return text.trim().replace(/^uses:[ \t]*/u, "").replace(/[ \t]+#.*$/u, "").trim();
+}
+
+// The caller file: core's reusable pr-triage workflow, as the `uses:` key at
+// indent 4 of the job pr-triage (frostyard/core docs/specs/risk-paths.md, rule E).
+// A uses: line in another job, or the same text inside a run: block, is not the
+// caller and must not pass.
+function checkCaller(caller) {
+  let text;
+  try {
+    text = readFileSync(join(root, caller), "utf8");
+  } catch {
+    failCheck("risk-paths", caller, "caller file does not exist");
+    return;
+  }
+  const lines = structureLines(text);
+  const jobsAt = lines.findIndex((line) => !line.inBlock && line.indent === 0 && /^jobs:[ \t]*(?:#.*)?$/u.test(line.text));
+  if (jobsAt < 0) {
+    failCheck("risk-paths", caller, `has no top-level jobs: key, so it has no job ${CALLER_JOB}`);
+    return;
+  }
+  const jobAt = lines.findIndex((line, index) => index > jobsAt && !line.inBlock
+    && line.indent === 2 && /^[^\s#][^:]*:[ \t]*(?:#.*)?$/u.test(line.text.trimStart())
+    && line.text.trim().replace(/:.*$/u, "") === CALLER_JOB);
+  if (jobAt < 0) {
+    failCheck("risk-paths", caller, `must run the reusable workflow in the job ${CALLER_JOB}`);
+    return;
+  }
+  let uses = null;
+  for (let index = jobAt + 1; index < lines.length; index++) {
+    const line = lines[index];
+    if (line.inBlock) continue;
+    const stripped = line.text.trim();
+    // A comment-only line never ends a YAML mapping, whatever its indent.
+    if (stripped === "" || stripped.startsWith("#")) continue;
+    if (line.indent <= 2) break;
+    if (line.indent === 4 && /^uses:/u.test(stripped)) {
+      uses = usesValue(stripped);
+      break;
+    }
+  }
+  if (uses === null) {
+    failCheck(
+      "risk-paths",
+      caller,
+      `the job ${CALLER_JOB} must set uses: at 4 spaces to frostyard/core/.github/workflows/pr-triage.yml at a full 40-character commit SHA; a uses: line in another job or in a run: block does not count`,
+    );
+    return;
+  }
+  if (!CALLER_WORKFLOW.test(uses)) {
+    failCheck(
+      "risk-paths",
+      caller,
+      `the uses: of the job ${CALLER_JOB} must be frostyard/core/.github/workflows/pr-triage.yml@<40-character commit SHA>, not ${JSON.stringify(uses)} (core ADR-0021)`,
+    );
+  }
+}
+
 function checkRiskPaths() {
   const relative = ".github/risk-paths.json";
   const absolute = join(root, relative);
@@ -215,18 +306,20 @@ function checkRiskPaths() {
     for (const error of validation.errors) {
       failCheck("risk-paths", relative, error);
     }
-  } else {
-    const caller = ".github/workflows/risk-paths.yml";
-    const callerAbsolute = join(root, caller);
-    if (!existsSync(callerAbsolute)) {
-      failCheck("risk-paths", caller, "caller file does not exist");
-    }
-    counts.riskEntries = list.paths.length;
-    for (const required of [relative, caller]) {
-      if (!list.paths.some((entry) => matchGlob(entry.glob, required))) {
-        failCheck("risk-paths", relative, `no glob matches the required path ${required}`);
-      }
-    }
+    return;
+  }
+
+  // A repository made from this template starts on list version 2, so a
+  // version 1 list fails here. The validator accepts 1 and 2; for version 2 it
+  // already requires default_level and the level of each entry.
+  if (list.schema_version !== 2) {
+    failCheck("risk-paths", relative, `schema_version: must be 2 in this template, not ${JSON.stringify(list.schema_version)}`);
+  }
+
+  checkCaller(CALLER_PATH);
+  counts.riskEntries = list.paths.length;
+  for (const error of checkRequiredPaths(list, [relative, CALLER_PATH])) {
+    failCheck("risk-paths", relative, error);
   }
 }
 
@@ -263,8 +356,8 @@ function checkVendored() {
   const vendored = [
     {
       path: "scripts/lib/risk-paths.mjs",
-      source: "frostyard/core@1b02a129026329cef2b46d1fbd0465a863c1cd81:scripts/lib/risk-paths.mjs",
-      sha256: "81a4e51e29b6ae754fdb9cbdf5edc712c47c893e7eadc3bbd17102749e051ba0",
+      source: "frostyard/core@c996ea3fb54bcf1a3c621113522213702a7673e2:scripts/lib/risk-paths.mjs",
+      sha256: "6df0af009ff385467214f8df56aa5c5c92ac19ad26689b3344bb4d2654cdfa43",
     },
     {
       path: "scripts/check-corrections.mjs",
@@ -299,6 +392,6 @@ if (failures.length > 0) {
 
 console.log("ok   agent-symlinks: 5 symlinks resolve to AGENTS.md and .agents/skills");
 console.log(`ok   docs-index: ${counts.docs} docs indexed, ${counts.links} index links resolve`);
-console.log(`ok   risk-paths: ${counts.riskEntries} entries, list and caller listed`);
+console.log(`ok   risk-paths: ${counts.riskEntries} entries at schema version 2, list and caller listed`);
 console.log(`ok   corrections: ${counts.corrections}`);
 console.log("ok   vendored: 2 pinned core copies match");
