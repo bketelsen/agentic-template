@@ -45,6 +45,9 @@ removed. -->
   record removed or renamed, only an empty `promoted_to` filled, and the old
   corrections file does not come back. Run `make ci BASE=origin/main` for the
   same check locally.
+- A doc that says what a gate refuses names the command and the condition it
+  runs under (for example `make ci BASE=<ref>`, not `make ci`), as the
+  `Makefile` and the workflow run it.
 - `mise.toml` and `mise.lock` pin every tool the gate runs (ADR-0043 in core);
   run `mise install` to get those versions. Change a pin only with `mise lock`,
   in a commit of its own.
