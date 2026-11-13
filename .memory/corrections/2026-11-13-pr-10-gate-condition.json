@@ -1,0 +1,7 @@
+{
+  "date": "2026-11-13",
+  "scope": "docs",
+  "correction": "A doc that says what a gate refuses must name the command and its condition: the base comparison of check-corrections runs only in make ci with BASE set, so an unconditional 'make ci refuses' claim is false",
+  "evidence": "bketelsen/agentic-template#10, cross-review (openai/gpt-6.1-sol) of head 01ea0ab, finding 1",
+  "promoted_to": "AGENTS.md"
+}

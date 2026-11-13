@@ -18,7 +18,7 @@ A GitHub template for repositories that LLM agents build and maintain, for maint
 | `mise.toml`, `mise.lock` | Pinned tool versions |
 | `scripts/` | Template and corrections validation scripts |
 | `test/` | Node.js fixtures and gate tests |
-| `.memory/` | The append-only corrections inbox |
+| `.memory/` | The corrections inbox: 1 file per record in `.memory/corrections/` |
 | `.github/` | Risk paths, dependabot settings, pull request guidance and workflows |
 | `LICENSE`, `SECURITY.md` | License text and private vulnerability reporting |
 
