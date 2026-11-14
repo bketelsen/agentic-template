@@ -35,12 +35,12 @@
     {
       "glob": "mise.toml",
       "level": "L1",
-      "why": "supply chain: the tool pins that CI installs"
+      "why": "update verification: the tool pins that CI installs"
     },
     {
       "glob": "mise.lock",
       "level": "L1",
-      "why": "supply chain: the checksums of the tools that CI installs"
+      "why": "update verification: the checksums of the tools that CI installs"
     }
   ]
 }
