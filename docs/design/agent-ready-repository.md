@@ -17,7 +17,7 @@ Agents succeed when the repository answers their questions before they ask:
 - **Mandatory cross-linking.** ADRs link the designs they shape; designs link their ADRs, specs, and roadmap phase; specs link back. A doc without its links is defined as incomplete, so the graph stays navigable from any entry point.
 - **Live conventions only.** AGENTS.md's code-conventions section describes the code *as it is* — rules graduate in when the enforcing code lands. Agents following stale rules produce broken work; this structure makes stale rules a category error.
 - **Skills over improvisation.** Multi-step procedures that repeat become `.agents/skills/<name>/SKILL.md` files with a frontmatter description agents can select on. Explaining a procedure twice means it should become a skill.
-- **A verify gate protects the template.** `make verify` checks the canonical surfaces, documentation index, risk paths, corrections inbox and vendored copies. The risk-path list gives every path a level, and the caller labels pull requests with it; the corrections inbox turns blocking reviews into guards.
+- **A verify gate protects the template.** `make verify` checks the canonical surfaces, documentation index, risk paths, corrections inbox, root README and vendored copies. The risk-path list gives every path a level, and the caller labels pull requests with it; the corrections inbox turns blocking reviews into guards.
 
 **Layout.** The parts that the template brings are:
 
@@ -42,6 +42,7 @@ Agents succeed when the repository answers their questions before they ask:
 | `SECURITY.md` | Private vulnerability reporting |
 | `scripts/` | Template and corrections gates |
 | `scripts/lib/risk-paths.mjs` | Pinned risk-path validator, matcher and levels |
+| `scripts/lib/check-readme.mjs` | Pinned core README checker: baseline B17, rules R1 to R12 |
 | `scripts/check-template.mjs` | Template verification entry point |
 | `scripts/check-corrections.mjs` | Pinned corrections gate: 1 file for each record |
 | `test/` | Node.js test fixtures and gate tests |
@@ -55,7 +56,9 @@ Agents succeed when the repository answers their questions before they ask:
 
 `mise install` provisions the pinned Node.js. `make verify` needs only Node.js 22 or later and `make`; it uses no package manager, `package.json`, install step or third-party dependency. Symlinks require Linux or macOS, or `core.symlinks=true` on Windows. GitHub's web renderer shows a symlink as its target path; this is cosmetic only.
 
-The verify gate checks canonical surfaces, the documentation index, risk paths, the corrections inbox and vendored copies. A pull request that touches `.github/risk-paths.json` gets 1 level label, and `risk:high` at L1 or L2; core takes the level from the matched globs, `default_level` and the org floors, and it never lowers a level label that the pull request already has. Blocking reviews become targeted tests or `AGENTS.md` rules with a corrections record file.
+`make verify` (also run by `make check` and `make ci`) checks root `README.md` against baseline B17, rules R1 to R12 of the [core README spec](https://github.com/frostyard/core/blob/main/docs/specs/readme.md). It runs an unchanged, hash-pinned copy of core's JavaScript checker in `scripts/lib/check-readme.mjs`; rule failures include the core rule ID and message. Copy the checker from core and update its source and hash in `scripts/check-template.mjs` to adopt a contract change. Subdirectory READMEs are outside B17.
+
+The verify gate also checks canonical surfaces, the documentation index, risk paths, the corrections inbox and vendored copies. A pull request that touches `.github/risk-paths.json` gets 1 level label, and `risk:high` at L1 or L2; core takes the level from the matched globs, `default_level` and the org floors, and it never lowers a level label that the pull request already has. Blocking reviews become targeted tests or `AGENTS.md` rules with a corrections record file.
 
 ## References
 
