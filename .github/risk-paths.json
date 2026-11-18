@@ -30,7 +30,7 @@
     {
       "glob": "scripts/lib/**",
       "level": "L2",
-      "why": "governance: the vendored risk-path validator and matcher"
+      "why": "governance: the vendored risk-path validator and matcher, and README checker"
     },
     {
       "glob": "mise.toml",
