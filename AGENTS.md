@@ -76,9 +76,12 @@ after the label. Add a path when you add a file of that kind (signing, auth,
 publish, secrets, destructive operations, CI), with a `why` that names its
 category. The gate requires schema version 2.
 
-**Vendored files.** `scripts/lib/risk-paths.mjs` and
-`scripts/check-corrections.mjs` are copies from frostyard/core; never edit them
-by hand (`make verify` checks their hashes).
+**Vendored files.** `scripts/lib/risk-paths.mjs`,
+`scripts/lib/check-readme.mjs` and `scripts/check-corrections.mjs` are copies
+from frostyard/core; never edit them by hand (`make verify` checks their hashes).
+The template gate runs the README checker unchanged for root `README.md`
+([core README spec](https://github.com/frostyard/core/blob/main/docs/specs/readme.md),
+baseline B17, rules R1 to R12).
 
 ## Repository boundary
 

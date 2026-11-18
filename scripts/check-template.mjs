@@ -13,7 +13,8 @@
 //   corrections     .memory/corrections/ passes core's record rules
 //                   (frostyard/core ADR-0018, ADR-0081), via
 //                   scripts/check-corrections.mjs.
-//   vendored        the 2 files copied from frostyard/core match their sha256 pins.
+//   readme          root README.md passes core's B17 rules R1 to R12.
+//   vendored        the 3 files copied from frostyard/core match their sha256 pins.
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
@@ -46,7 +47,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const failures = [];
-const counts = { docs: 0, links: 0, riskEntries: 0, corrections: "" };
+const counts = { docs: 0, links: 0, riskEntries: 0, corrections: "", readme: "" };
 
 function failCheck(name, file, problem) {
   failures.push({ name, file, problem });
@@ -352,9 +353,30 @@ function checkCorrections() {
   }
 }
 
-// e. Hash-pinned vendored core files. Update by copying core, never editing.
+// e. Run core's README checker unchanged: B17, docs/specs/readme.md (ADR-0072).
+function checkReadme() {
+  try {
+    counts.readme = execFileSync(process.execPath, [join(scriptDir, "lib", "check-readme.mjs"), root], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim().replace(/^ok\s+/, "");
+  } catch (error) {
+    const output = [error.stdout, error.stderr].filter(Boolean).join("\n").trim();
+    for (const line of (output || `child process exited ${error.status ?? 1}`).split("\n")) {
+      failCheck("readme", "README.md", line);
+    }
+  }
+}
+
+// f. Hash-pinned vendored core files. Update by copying core, never editing.
 function checkVendored() {
   const vendored = [
+    {
+      path: "scripts/lib/check-readme.mjs",
+      source: "frostyard/core@b40d872d20084527849242a8bcc6b074cd5333a9:.agents/skills/frostyard-readme/scripts/check-readme.mjs",
+      sha256: "543c494db6aa638b9413f1ad8f02d0f47c353ee60b7a9fcfa91cfd2a177ef72f",
+    },
     {
       path: "scripts/lib/risk-paths.mjs",
       source: "frostyard/core@c996ea3fb54bcf1a3c621113522213702a7673e2:scripts/lib/risk-paths.mjs",
@@ -382,6 +404,7 @@ checkAgentSymlinks();
 checkDocsIndex();
 checkRiskPaths();
 checkCorrections();
+checkReadme();
 checkVendored();
 
 if (failures.length > 0) {
@@ -395,4 +418,5 @@ console.log("ok   agent-symlinks: 5 symlinks resolve to AGENTS.md and .agents/sk
 console.log(`ok   docs-index: ${counts.docs} docs indexed, ${counts.links} index links resolve`);
 console.log(`ok   risk-paths: ${counts.riskEntries} entries at schema version 2, list and caller listed`);
 console.log(`ok   corrections: ${counts.corrections}`);
-console.log("ok   vendored: 2 pinned core copies match");
+console.log(`ok   readme: ${counts.readme}`);
+console.log("ok   vendored: 3 pinned core copies match");

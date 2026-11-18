@@ -20,6 +20,45 @@ const checker = join(repo, "scripts", "check-template.mjs");
 const coreSha = "c996ea3fb54bcf1a3c621113522213702a7673e2";
 const temporary = [];
 
+const validReadme = `<!-- readme-kind: org -->
+# Test template
+
+A repository template for maintainers.
+
+**Status:** in production.
+
+**Documentation:** [Docs](docs/README.md)
+
+## What is here
+
+Portable instructions and documentation.
+
+## Use
+
+Copy the template.
+
+## Develop
+
+\`\`\`sh
+mise install
+make ci
+\`\`\`
+
+## Where to go next
+
+- [AGENTS.md](AGENTS.md)
+- [Docs](docs/README.md)
+- [Security](SECURITY.md)
+- [License](LICENSE)
+`;
+
+function replaceReadme(from, to) {
+  assert.ok(validReadme.includes(from), `README fixture must contain ${JSON.stringify(from)}`);
+  const changed = validReadme.replace(from, to);
+  assert.notEqual(changed, validReadme);
+  return changed;
+}
+
 after(() => {
   for (const directory of temporary) rmSync(directory, { recursive: true, force: true });
 });
@@ -34,6 +73,9 @@ function fixture() {
   mkdirSync(join(root, ".memory", "corrections"), { recursive: true });
   mkdirSync(join(root, "scripts", "lib"), { recursive: true });
 
+  writeFileSync(join(root, "README.md"), validReadme, "utf8");
+  writeFileSync(join(root, "SECURITY.md"), "# Security\n", "utf8");
+  writeFileSync(join(root, "LICENSE"), "MIT\n", "utf8");
   writeFileSync(join(root, "AGENTS.md"), "# Test instructions\n", "utf8");
   symlinkSync("AGENTS.md", join(root, "CLAUDE.md"));
   symlinkSync("AGENTS.md", join(root, "GEMINI.md"));
@@ -92,6 +134,7 @@ function fixture() {
 
   copyFileSync(join(repo, "scripts", "lib", "risk-paths.mjs"), join(root, "scripts", "lib", "risk-paths.mjs"));
   copyFileSync(join(repo, "scripts", "check-corrections.mjs"), join(root, "scripts", "check-corrections.mjs"));
+  copyFileSync(join(repo, "scripts", "lib", "check-readme.mjs"), join(root, "scripts", "lib", "check-readme.mjs"));
   return root;
 }
 
@@ -527,6 +570,102 @@ test("corrections folder with only .gitkeep exits 0", (t) => {
   unlinkSync(join(root, ".memory", "corrections", "2026-11-01-pr-1-keep-guard.json"));
   writeFileSync(join(root, ".memory", "corrections", ".gitkeep"), "", "utf8");
   assertClean(run(root));
+});
+
+// Exercise the template entry point, not only the vendored checker's exports:
+// removing its invocation must make these negative tests fail.
+const readmeFailures = [
+  ["R1", "missing marker", replaceReadme("<!-- readme-kind: org -->\n", "")],
+  ["R1", "unknown kind", replaceReadme("readme-kind: org", "readme-kind: unknown")],
+  ["R1", "duplicate marker", `<!-- readme-kind: org -->\n${validReadme}`],
+  ["R2", "missing title", replaceReadme("# Test template\n", "")],
+  ["R2", "second title", `${validReadme}\n # Another title\n`],
+  ["R2", "title is not first", replaceReadme("# Test template", "## Credits\n\n# Test template")],
+  ["R3", "missing lead", replaceReadme("A repository template for maintainers.\n", "")],
+  ["R3", "top block over 130 words", replaceReadme("A repository template for maintainers.", "word ".repeat(126))],
+  ["R4", "missing status", replaceReadme("**Status:** in production.\n", "")],
+  ["R4", "unknown status", replaceReadme("**Status:** in production.", "**Status:** soon.")],
+  ["R4", "duplicate status", replaceReadme("**Status:**", "**Status:** stable.\n\n**Status:**")],
+  ["R4", "status over 40 words", replaceReadme("**Status:** in production.", `**Status:** stable. ${"word ".repeat(39)}`)],
+  ["R5", "missing documentation", replaceReadme("**Documentation:** [Docs](docs/README.md)\n", "")],
+  ["R5", "documentation without link", replaceReadme("**Documentation:** [Docs](docs/README.md)", "**Documentation:** see docs")],
+  ["R6", "unsupported badge", replaceReadme("# Test template", "# Test template\n\n[![Badge](https://example.org/api.scorecard.dev/badge.svg)](https://example.org/)")],
+  ["R6", "more than 3 badges", replaceReadme("# Test template", `# Test template\n\n${"[![CI](https://github.com/example/repo/actions/workflows/ci.yml/badge.svg)](https://example.org/) ".repeat(4)}`)],
+  ["R6", "badge outside top block", `${validReadme}\n[![CI](https://github.com/example/repo/actions/workflows/ci.yml/badge.svg)](https://example.org/)\n`],
+  ["R7", "unknown section", replaceReadme("## What is here", "## Overview")],
+  ["R7", "required section order", replaceReadme("## What is here\n\nPortable instructions and documentation.\n\n## Use", "## Use\n\nCopy instructions.\n\n## What is here")],
+  ["R7", "section after footer", `${validReadme}\n## Credits\n`],
+  ["R8", "deep heading", `${validReadme}\n ### Internals\n`],
+  ["R9", "no gate command", replaceReadme("make ci", "npm test")],
+  ["R9", "gate command outside fence", replaceReadme("make ci\n```", "```\n\nRun make ci.")],
+  ...["AGENTS.md", "docs/README.md", "SECURITY.md", "LICENSE"].map((path) => [
+    "R10", `missing footer link to ${path}`, replaceReadme(`](${path})`, "](https://example.org/)")
+      // The docs link also appears in the top block; remove both destinations.
+      .replaceAll(`](${path})`, "](https://example.org/)"),
+  ]),
+  ["R10", "footer link inside fence", replaceReadme("- [License](LICENSE)", "```md\n- [License](LICENSE)\n```")],
+  ["R11", "over 1000 words", `${validReadme}\n${"word ".repeat(1001 - validReadme.trim().split(/\s+/u).length)}`],
+  ["R12", "emoji inside code", `${validReadme}\n\`\`\`text\n\u2728\n\`\`\`\n`],
+  ...["10.0.0.1", "172.16.0.1", "172.31.255.255", "192.168.1.1", "100.64.0.1", "100.127.255.255"].map((ip) => [
+    "R12", `private address ${ip} inside code`, `${validReadme}\n\`\`\`text\n${ip}\n\`\`\`\n`,
+  ]),
+  ["R12", "more than 2 prose dates", `${validReadme}\n2026-01-01 2026-01-02 2026-01-03\n`],
+  ...["├──", "└──"].map((branch) => ["R12", `tree drawing ${branch}`, `${validReadme}\n${branch} src\n`]),
+];
+
+for (const [rule, name, text] of readmeFailures) {
+  test(`README ${rule}: ${name} exits 1`, (t) => {
+    const root = fixture();
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    writeFileSync(join(root, "README.md"), text);
+    const result = run(root);
+    assert.equal(result.status, 1, output(result));
+    assert.match(output(result), new RegExp(`FAIL readme: README\\.md: FAIL ${rule} `));
+  });
+}
+
+const readmePasses = [
+  ["top block at 130 words", replaceReadme("A repository template for maintainers.", "word ".repeat(125))],
+  ["status at 40 words", replaceReadme("**Status:** in production.", `**Status:** stable. ${"word ".repeat(38)}`)],
+  ["file at 1000 words", `${validReadme}\n${"word ".repeat(1000 - validReadme.trim().split(/\s+/u).length)}`],
+  ["make check", replaceReadme("make ci", "make check")],
+  ["make verify", replaceReadme("make ci", "make verify")],
+  ["fenced headings", replaceReadme("mise install", "# Comment\n## Not a section\n### Not a heading\nmise install")],
+  ["R12 allowed symbols, public addresses and fenced dates", `${validReadme}\n© ® ™ QEMU 10.0.13 192.0.2.1 172.15.0.1 172.32.0.1 100.63.0.1 100.128.0.1\n2026-01-01 2026-01-02\n\`\`\`text\n2026-01-03 2026-01-04 2026-01-05\n\`\`\`\n`],
+];
+
+for (const [name, text] of readmePasses) {
+  test(`README ${name} exits 0`, (t) => {
+    const root = fixture();
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    writeFileSync(join(root, "README.md"), text);
+    assertClean(run(root));
+  });
+}
+
+test("missing root README exits 1, not the docs README", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  unlinkSync(join(root, "README.md"));
+  assertFailure(run(root), "FAIL readme: README\\.md: FAIL R2 README\\.md is missing");
+});
+
+test("README R10 requires the SECURITY.md location that exists", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  unlinkSync(join(root, "SECURITY.md"));
+  writeFileSync(join(root, ".github", "SECURITY.md"), "# Security\n");
+  assertFailure(run(root), "FAIL readme: README\\.md: FAIL R10 .*does not link .github/SECURITY\\.md");
+  writeFileSync(join(root, "README.md"), replaceReadme("](SECURITY.md)", "](.github/SECURITY.md)"));
+  assertClean(run(root));
+});
+
+test("changed vendored README checker exits 1", (t) => {
+  const root = fixture();
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const library = join(root, "scripts", "lib", "check-readme.mjs");
+  writeFileSync(library, readFileSync(library, "utf8") + " ", "utf8");
+  assertFailure(run(root), "FAIL vendored: scripts/lib/check-readme\\.mjs:");
 });
 
 test("changed vendored risk-path library exits 1", (t) => {
