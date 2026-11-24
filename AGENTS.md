@@ -117,9 +117,10 @@ starts, who tags, the version rule and its internal dependencies. -->
     [`scripts/check-template.mjs`](scripts/check-template.mjs):
     `scripts/lib/risk-paths.mjs`, `scripts/lib/check-readme.mjs` and
     `scripts/check-corrections.mjs`.
-  - The tool pins in `mise.toml` and `mise.lock`, and the action SHAs in
-    `.github/workflows/`, which Dependabot bumps monthly
+  - The action SHAs in `.github/workflows/`, which Dependabot bumps monthly
     ([`dependabot.yml`](.github/dependabot.yml)).
+  - The tool pins in `mise.toml` and `mise.lock`. Dependabot does not bump
+    them; change a pin with `mise lock` (see **Code conventions**).
 - Who uses this repository: every repository created with **Use this
   template**. Each holds a copy, not a link.
 
