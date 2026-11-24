@@ -10,6 +10,10 @@
 //                   and the caller are listed, both at L1 or L2. The caller
 //                   runs frostyard/core's pr-triage.yml at a full commit SHA
 //                   in the job pr-triage (frostyard/core docs/specs/risk-paths.md).
+//   action-pins     every uses: in .github/workflows and .github/actions/**/action.y{a,}ml
+//                   is OWNER/REPO[/PATH]@<40-hex SHA> with a # vX.Y.Z or # vX.Y comment
+//                   (a frostyard/core reusable workflow needs only a comment), and each
+//                   action has 1 SHA (core ADR-0021, ADR-0090).
 //   corrections     .memory/corrections/ passes core's record rules
 //                   (frostyard/core ADR-0018, ADR-0081), via
 //                   scripts/check-corrections.mjs.
@@ -47,7 +51,7 @@ for (let i = 0; i < args.length; i++) {
 }
 
 const failures = [];
-const counts = { docs: 0, links: 0, riskEntries: 0, corrections: "", readme: "" };
+const counts = { docs: 0, links: 0, riskEntries: 0, corrections: "", readme: "", actionPins: "" };
 
 function failCheck(name, file, problem) {
   failures.push({ name, file, problem });
@@ -325,6 +329,73 @@ function checkRiskPaths() {
   }
 }
 
+// g. Action pins (core ADR-0021, ADR-0090): version comments and 1 SHA per action.
+function checkActionPins() {
+  const files = [];
+  function collect(directory, workflows) {
+    if (!existsSync(join(root, directory))) return;
+    for (const entry of readdirSync(join(root, directory), { withFileTypes: true })) {
+      const file = `${directory}/${entry.name}`;
+      if (entry.isDirectory()) collect(file, workflows);
+      else if (entry.isFile() && (workflows
+        ? /\.ya?ml$/u.test(entry.name)
+        : entry.name === "action.yml" || entry.name === "action.yaml")) files.push(file);
+    }
+  }
+  collect(".github/workflows", true);
+  collect(".github/actions", false);
+  files.sort();
+  const shas = new Map();
+  let pins = 0;
+  const mentionsUses = /(^|[\s{,[])["']?uses["']?[ \t]*:/u;
+  const usesLine = /^[ \t]*(?:-[ \t]+)?(?:uses|"uses"|'uses')[ \t]*:[ \t]+([^\s#|>{}&*!"'[\]][^\s]*|"[^"]*"|'[^']*')(?:[ \t]+#[ \t]*(.*?))?[ \t]*$/u;
+  const actionPin = /^([^./\s@][^@\s]*\/[^@\s]+)@([0-9a-f]{40})$/u;
+  const versionComment = /^v\d+\.\d+(\.\d+)?$/u;
+  for (const file of files) {
+    const text = readFileSync(join(root, file), "utf8").replace(/^\uFEFF/u, "");
+    const lines = structureLines(text);
+    for (const [index, line] of lines.entries()) {
+      if (line.inBlock || line.text.trim().startsWith("#") || !mentionsUses.test(line.text)) continue;
+      const where = `${file}:${index + 1}`;
+      const match = usesLine.exec(line.text);
+      if (!match) {
+        failCheck("action-pins", where, "a uses: key this check cannot read (flow mapping, block scalar or text); write it as `uses: VALUE # COMMENT` on 1 line");
+        continue;
+      }
+      const value = match[1].replace(/^(["'])(.*)\1$/u, "$2");
+      const comment = match[2] || "";
+      if (value.startsWith("./") || value.startsWith("docker://")) continue;
+      const pin = actionPin.exec(value);
+      if (!pin) {
+        failCheck("action-pins", where, `${value} must be OWNER/REPO[/PATH]@<40-character commit SHA> (core ADR-0021)`);
+        continue;
+      }
+      const [, action, sha] = pin;
+      pins++;
+      if (action.startsWith("frostyard/core/.github/workflows/")) {
+        if (!comment) failCheck("action-pins", where, `${action} has no comment; name the core commit on main (core ADR-0090)`);
+      } else if (!versionComment.test(comment)) {
+        failCheck("action-pins", where, `${action} has comment ${JSON.stringify(comment)}, want # vX.Y.Z or # vX.Y (core ADR-0090)`);
+      }
+      if (!shas.has(action)) shas.set(action, new Map());
+      if (!shas.get(action).has(sha)) shas.get(action).set(sha, where);
+    }
+  }
+  for (const action of [...shas.keys()].sort()) {
+    const set = shas.get(action);
+    if (set.size <= 1) continue;
+    const list = [...set].map(([sha, where]) => `${sha} (${where})`).sort().join(", ");
+    failCheck("action-pins", action, `has ${set.size} SHAs, want 1 across .github/workflows and .github/actions (core ADR-0090): ${list}`);
+  }
+  if (!files.some((file) => file.startsWith(".github/workflows/"))) {
+    failCheck("action-pins", ".github/workflows", "no workflow file");
+  }
+  if (pins === 0) {
+    failCheck("action-pins", ".github/workflows", "no OWNER/REPO@SHA action pin: the check would pass on nothing");
+  }
+  counts.actionPins = `${files.length} files, ${pins} pins, ${shas.size} actions with 1 SHA each`;
+}
+
 // d. Run the corrections child process from the same scripts folder.
 function checkCorrections() {
   const script = join(scriptDir, "check-corrections.mjs");
@@ -403,6 +474,7 @@ function checkVendored() {
 checkAgentSymlinks();
 checkDocsIndex();
 checkRiskPaths();
+checkActionPins();
 checkCorrections();
 checkReadme();
 checkVendored();
@@ -417,6 +489,7 @@ if (failures.length > 0) {
 console.log("ok   agent-symlinks: 5 symlinks resolve to AGENTS.md and .agents/skills");
 console.log(`ok   docs-index: ${counts.docs} docs indexed, ${counts.links} index links resolve`);
 console.log(`ok   risk-paths: ${counts.riskEntries} entries at schema version 2, list and caller listed`);
+console.log(`ok   action-pins: ${counts.actionPins}`);
 console.log(`ok   corrections: ${counts.corrections}`);
 console.log(`ok   readme: ${counts.readme}`);
 console.log("ok   vendored: 3 pinned core copies match");

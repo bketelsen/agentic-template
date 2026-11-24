@@ -17,7 +17,9 @@ import { fileURLToPath } from "node:url";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const checker = join(repo, "scripts", "check-template.mjs");
-const coreSha = "c996ea3fb54bcf1a3c621113522213702a7673e2";
+// Placeholder SHAs for synthetic fixtures (core ADR-0088), not live pins.
+const coreSha = "0123456789abcdef0123456789abcdef01234567";
+const otherSha = "89abcdef0123456789abcdef0123456789abcdef";
 const temporary = [];
 
 const validReadme = `<!-- readme-kind: org -->
@@ -675,3 +677,96 @@ test("changed vendored risk-path library exits 1", (t) => {
   writeFileSync(library, readFileSync(library, "utf8") + " ", "utf8");
   assertFailure(run(root), "vendored");
 });
+
+function writeWorkflow(root, text, name = "ci.yml") {
+  const file = join(root, ".github", "workflows", name);
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, text, "utf8");
+}
+
+function writeComposite(root, uses) {
+  const file = join(root, ".github", "actions", "setup", "action.yml");
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `runs:\n  using: composite\n  steps:\n    - uses: ${uses}\n`, "utf8");
+}
+
+const checkoutPin = `actions/checkout@${coreSha}`;
+const otherCheckoutPin = `actions/checkout@${otherSha}`;
+const coreAction = "frostyard/core/.github/workflows/pr-triage.yml";
+const workflowStep = (value) => `jobs:\n  ci:\n    steps:\n      - uses: ${value}\n`;
+const escapedPattern = (text) => text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+
+const actionPinPasses = [
+  ["three-part comment", (root) => writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`))],
+  ["two-part comment", (root) => writeWorkflow(root, workflowStep(`${checkoutPin} # v3.5`))],
+  ["quoted value", (root) => writeWorkflow(root, workflowStep(`"${checkoutPin}" # v7.0.1`))],
+  ["quoted key", (root) => writeWorkflow(root, `- "uses": ${checkoutPin} # v7.0.1\n`)],
+  ["CRLF", (root) => writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`).replaceAll("\n", "\r\n"))],
+  ["leading BOM", (root) => writeWorkflow(root, `\uFEFFuses: ${checkoutPin} # v7.0.1\n`)],
+  ["nested action path", (root) => writeWorkflow(root, workflowStep(`frostyard/repogen/.github/actions/publish-to-r2@${coreSha} # v1.2.3`))],
+  ["local beside pin", (root) => writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`) + "      - uses: ./.github/actions/x\n")],
+  ["docker beside pin", (root) => writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`) + "      - uses: docker://alpine:latest\n")],
+  ["same SHA in 2 workflows", (root) => {
+    writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`));
+    writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`), "nested/other.yaml");
+  }],
+  ["same SHA in workflow and composite", (root) => {
+    writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`));
+    writeComposite(root, `${checkoutPin} # v7.0.1`);
+  }],
+  ["uses text in run block", (root) => writeWorkflow(root, "steps:\n  - run: |\n      uses: actions/checkout@v4\n")],
+  ["commented-out uses", (root) => writeWorkflow(root, "# - uses: actions/checkout@v4\n")],
+];
+for (const [name, setup] of actionPinPasses) {
+  test(`action-pins: ${name} exits 0`, () => {
+    const root = fixture();
+    setup(root);
+    const result = run(root);
+    assertClean(result);
+    assert.match(output(result), /ok   action-pins: \d+ files, \d+ pins, \d+ actions with 1 SHA each/u);
+  });
+}
+
+const commentProblem = (comment) => `actions/checkout has comment ${JSON.stringify(comment)}, want # vX.Y.Z or # vX.Y (core ADR-0090)`;
+const twoSHAProblem = "has 2 SHAs, want 1 across .github/workflows and .github/actions (core ADR-0090):";
+const actionPinFailures = [
+  ...["", "v7", "v7.0.1 pinned", "main 2026-11-14", "7.0.1"].map((comment) => [
+    `invalid comment ${JSON.stringify(comment)}`,
+    (root) => writeWorkflow(root, workflowStep(checkoutPin + (comment ? ` # ${comment}` : ""))),
+    commentProblem(comment),
+  ]),
+  ["core caller without comment", (root) => {
+    const file = join(root, ".github", "workflows", "risk-paths.yml");
+    writeFileSync(file, readFileSync(file, "utf8").replace(" # frostyard/core main", ""));
+  }, `${coreAction} has no comment; name the core commit on main (core ADR-0090)`],
+  ...["v4", coreSha.slice(0, 7)].map((ref) => [
+    `mutable or short ref ${ref}`,
+    (root) => writeWorkflow(root, workflowStep(`actions/checkout@${ref} # v4.4.0`)),
+    `actions/checkout@${ref} must be OWNER/REPO[/PATH]@<40-character commit SHA> (core ADR-0021)`,
+  ]),
+  ["2 SHAs in 1 file", (root) => writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`) + `      - uses: ${otherCheckoutPin} # v7.0.2\n`), twoSHAProblem],
+  ["2 SHAs across workflows", (root) => {
+    writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`));
+    writeWorkflow(root, workflowStep(`${otherCheckoutPin} # v7.0.2`), "other.yml");
+  }, twoSHAProblem],
+  ["2 SHAs across workflow and composite", (root) => {
+    writeWorkflow(root, workflowStep(`${checkoutPin} # v7.0.1`));
+    writeComposite(root, `${otherCheckoutPin} # v7.0.2`);
+  }, twoSHAProblem],
+  ["2 core caller SHAs", (root) => writeWorkflow(root, `uses: ${coreAction}@${otherSha} # another core commit\n`), twoSHAProblem],
+  ["flow mapping", (root) => writeWorkflow(root, `- { uses: ${checkoutPin} }\n`), "a uses: key this check cannot read (flow mapping, block scalar or text); write it as `uses: VALUE # COMMENT` on 1 line"],
+  ["no workflow file", (root) => rmSync(join(root, ".github", "workflows"), { recursive: true }), "no workflow file"],
+  ["only local uses", (root) => {
+    unlinkSync(join(root, ".github", "workflows", "risk-paths.yml"));
+    writeWorkflow(root, workflowStep("./local"));
+  }, "no OWNER/REPO@SHA action pin: the check would pass on nothing"],
+];
+for (const [name, setup, problem] of actionPinFailures) {
+  test(`action-pins: ${name} exits 1`, () => {
+    const root = fixture();
+    setup(root);
+    const result = run(root);
+    assertFailure(result, escapedPattern(problem));
+    assert.match(output(result), /FAIL action-pins:/u);
+  });
+}
