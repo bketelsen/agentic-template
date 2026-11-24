@@ -85,9 +85,44 @@ baseline B17, rules R1 to R12).
 
 ## Repository boundary
 
-<!-- What does NOT belong in this repo (secrets, personal data, generated
-files that are actually build outputs, apps that belong elsewhere)? How are
-releases cut? Delete the section if genuinely not applicable. -->
+<!-- A new project: replace this section with what does NOT belong in your
+repo (secrets, personal data, generated files that are actually build
+outputs, apps that belong elsewhere). -->
+
+- This repository holds the starting files of a new repository and the gate
+  that checks them. It holds no application code, no secrets, no build outputs
+  and no project-specific content: those belong in the repository created from
+  it.
+- An org-wide rule is decided in frostyard/core (an ADR listed in
+  `docs/org-adrs.md`); this repository only follows it. Change the 3 vendored
+  core files only by copying them again from core (see **Vendored files**).
+
+## Releases and dependencies
+
+<!-- A new project: replace this section with its tag format, how a release
+starts, who tags, the version rule and its internal dependencies. -->
+
+- Tag format: none. This repository has no tags and no releases.
+- How a release starts: no release. A new repository copies `main` when it is
+  created from the template; a merge to `main` reaches only repositories
+  created after it, never an existing one.
+- Who tags: nobody. Agents never tag, push tags or create a release.
+- Version rule: none.
+- Internal dependencies:
+  - frostyard/core's reusable workflow `.github/workflows/pr-triage.yml`,
+    pinned to a commit in
+    [`risk-paths.yml`](.github/workflows/risk-paths.yml).
+  - The 3 vendored core files, each with its core commit and sha256 pin in
+    `checkVendored()` of
+    [`scripts/check-template.mjs`](scripts/check-template.mjs):
+    `scripts/lib/risk-paths.mjs`, `scripts/lib/check-readme.mjs` and
+    `scripts/check-corrections.mjs`.
+  - The action SHAs in `.github/workflows/`, which Dependabot bumps monthly
+    ([`dependabot.yml`](.github/dependabot.yml)).
+  - The tool pins in `mise.toml` and `mise.lock`. Dependabot does not bump
+    them; change a pin with `mise lock` (see **Code conventions**).
+- Who uses this repository: every repository created with **Use this
+  template**. Each holds a copy, not a link.
 
 ## Documentation rules (enforced)
 
