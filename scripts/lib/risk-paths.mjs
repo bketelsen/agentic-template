@@ -46,6 +46,8 @@ export const ORG_FLOORS = Object.freeze({
 });
 const MAX_JSON_DEPTH = 64;
 const MAX_PAGES = 40;
+export const API_MAX_ATTEMPTS = 3;
+export const API_RETRY_BASE_MS = 1000;
 
 // ---- Strict JSON ----------------------------------------------------------
 
@@ -515,15 +517,78 @@ export function checkRequiredPaths(list, requiredPaths) {
   return errors;
 }
 
+// ---- Categories (rule B) --------------------------------------------------
+
+// Rule B: each why of an entry at L1 or L2 (every entry of a version 1 list)
+// names 1 of these categories, when the repository has no protected boundaries.
+export const WHY_CATEGORIES = Object.freeze([
+  "boot chain",
+  "signing and keys",
+  "update verification",
+  "auth",
+  "publication",
+  "secrets and credentials",
+  "rulesets and settings",
+  "destructive operations",
+  "supply chain",
+  "governance",
+]);
+
+// The protected-boundary identifiers of a parsed governance policy:
+// protected_boundaries[].id (core) and protectedBoundaries[] (snosi). Gives []
+// when the policy has none.
+export function protectedBoundaryIds(policy) {
+  if (!isPlainObject(policy)) return [];
+  const ids = [];
+  if (Array.isArray(policy.protected_boundaries)) {
+    for (const boundary of policy.protected_boundaries) {
+      if (isPlainObject(boundary) && typeof boundary.id === "string" && boundary.id.trim() !== "") ids.push(boundary.id);
+    }
+  }
+  if (Array.isArray(policy.protectedBoundaries)) {
+    for (const boundary of policy.protectedBoundaries) {
+      if (typeof boundary === "string" && boundary.trim() !== "") ids.push(boundary);
+    }
+  }
+  return ids;
+}
+
+// Rule B for the gates, on a valid list: each why of an entry at L1 or L2
+// (every entry of a version 1 list) names 1 category of WHY_CATEGORIES, or 1
+// of boundaries when boundaries is not empty. A why names a name when the
+// trimmed why is the name, or starts with the name and a colon. Returns error
+// strings.
+export function checkWhyCategories(list, boundaries = []) {
+  const useBoundaries = Array.isArray(boundaries) && boundaries.length > 0;
+  const names = useBoundaries ? boundaries : WHY_CATEGORIES;
+  const kind = useBoundaries ? "protected-boundary identifier" : "category";
+  const v2 = list.schema_version === 2;
+  const errors = [];
+  list.paths.forEach((entry, index) => {
+    if (v2 && entry.level !== "L1" && entry.level !== "L2") return;
+    const why = entry.why.trim();
+    if (names.some((name) => why === name || why.startsWith(`${name}:`))) return;
+    const level = v2 ? entry.level : "L1";
+    errors.push(
+      `paths[${index}].why: the glob ${entry.glob} is at ${level}, so its why must start with 1 ${kind} ` +
+        `(${names.join(", ")}) and then end or a colon; it is ${JSON.stringify(entry.why)}`,
+    );
+  });
+  return errors;
+}
+
 // ---- GitHub API -----------------------------------------------------------
 
-export function createGitHubApi({ token, apiUrl = "https://api.github.com", fetch }) {
+export function createGitHubApi({ token, apiUrl = "https://api.github.com", fetch, sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
   if (!token) throw new Error("no GitHub token");
   if (typeof fetch !== "function") throw new Error("no fetch function");
+  if (typeof sleep !== "function") throw new Error("no sleep function");
   const base = String(apiUrl).replace(/\/+$/, "");
   const enc = encodeURIComponent;
 
-  const request = async (method, path, { accept = "application/vnd.github+json", body, allow404 = false } = {}) => {
+  // Reads and deletes retry transient failures; only the idempotent add-labels
+  // POST opts in, since retrying a comment POST could write a second comment.
+  const request = async (method, path, { accept = "application/vnd.github+json", body, allow404 = false, retry = method !== "POST" } = {}) => {
     const url = path.startsWith(`${base}/`) ? path : `${base}${path}`;
     const shownPath = url.slice(base.length).split("?")[0];
     const headers = {
@@ -533,22 +598,32 @@ export function createGitHubApi({ token, apiUrl = "https://api.github.com", fetc
       "User-Agent": "frostyard-risk-paths",
     };
     if (body !== undefined) headers["Content-Type"] = "application/json";
-    let response;
-    try {
-      response = await fetch(url, {
-        method,
-        headers,
-        body: body === undefined ? undefined : JSON.stringify(body),
-        redirect: "error",
-      });
-    } catch (error) {
-      throw new Error(`GitHub API ${method} ${shownPath} failed: ${error?.message ?? "network error"}`);
+    const attempts = retry ? API_MAX_ATTEMPTS : 1;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      if (attempt > 1) await sleep(API_RETRY_BASE_MS * 2 ** (attempt - 2));
+      let response;
+      try {
+        response = await fetch(url, {
+          method,
+          headers,
+          body: body === undefined ? undefined : JSON.stringify(body),
+          redirect: "error",
+        });
+      } catch (error) {
+        if (attempt < attempts) continue;
+        throw new Error(`GitHub API ${method} ${shownPath} failed: ${error?.message ?? "network error"}`);
+      }
+      if (allow404 && response.status === 404) return null;
+      if (response.status < 200 || response.status > 299) {
+        if (response.status >= 500 && response.status <= 599 && attempt < attempts) continue;
+        // The message stays as it was for existing callers; `status` lets a
+        // caller tell one HTTP status from another without parsing the text.
+        const error = new Error(`GitHub API ${method} ${shownPath} failed: HTTP ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      return response;
     }
-    if (allow404 && response.status === 404) return null;
-    if (response.status < 200 || response.status > 299) {
-      throw new Error(`GitHub API ${method} ${shownPath} failed: HTTP ${response.status}`);
-    }
-    return response;
   };
 
   const nextLink = (header) => {
@@ -646,9 +721,10 @@ export function createGitHubApi({ token, apiUrl = "https://api.github.com", fetc
       return response !== null;
     },
 
-    // The latest run of each check name (filter=latest), as GitHub's checks
-    // rollup counts them: an older failed run that a re-run replaced does not
-    // count.
+    // The latest run of each check name in each check suite (filter=latest).
+    // Each workflow run is a check suite of its own, so the list can still
+    // hold an older run of the same check from another workflow run; the
+    // readiness step keeps only the newest (newestCheckRuns in pr-triage.mjs).
     async listCheckRuns(owner, repo, sha) {
       return paginate(`/repos/${enc(owner)}/${enc(repo)}/commits/${enc(sha)}/check-runs?filter=latest&per_page=100`, {
         field: "check_runs",
@@ -682,6 +758,7 @@ export function createGitHubApi({ token, apiUrl = "https://api.github.com", fetc
     async addLabels(owner, repo, number, labels) {
       await request("POST", `/repos/${enc(owner)}/${enc(repo)}/issues/${enc(String(number))}/labels`, {
         body: { labels },
+        retry: true,
       });
     },
   };

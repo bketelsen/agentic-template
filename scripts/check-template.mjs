@@ -374,13 +374,13 @@ function checkVendored() {
   const vendored = [
     {
       path: "scripts/lib/check-readme.mjs",
-      source: "frostyard/core@b40d872d20084527849242a8bcc6b074cd5333a9:.agents/skills/frostyard-readme/scripts/check-readme.mjs",
-      sha256: "543c494db6aa638b9413f1ad8f02d0f47c353ee60b7a9fcfa91cfd2a177ef72f",
+      source: "frostyard/core@f99acfddee0a5466990b72e6292a5b1642444a25:.agents/skills/frostyard-readme/scripts/check-readme.mjs",
+      sha256: "52c6ec68af8863620efcf58a87a385ee1e3b190e963f861b6b2a31f61b4f9840",
     },
     {
       path: "scripts/lib/risk-paths.mjs",
-      source: "frostyard/core@c996ea3fb54bcf1a3c621113522213702a7673e2:scripts/lib/risk-paths.mjs",
-      sha256: "6df0af009ff385467214f8df56aa5c5c92ac19ad26689b3344bb4d2654cdfa43",
+      source: "frostyard/core@f99acfddee0a5466990b72e6292a5b1642444a25:scripts/lib/risk-paths.mjs",
+      sha256: "60be51bee9023314598d431cfc70f728624b5a0df34581656650f886bc404b67",
     },
     {
       path: "scripts/check-corrections.mjs",
